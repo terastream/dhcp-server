@@ -72,6 +72,7 @@ ssize_t decode_ethernet_header (interface, buf, bufix, from)
 {
   struct isc_ether_header eh;
 
+// Q: Again, copying instead of a simple pointer manipulation?
   memcpy (&eh, buf + bufix, ETHER_HEADER_SIZE);
 
 #ifdef USERLAND_FILTER

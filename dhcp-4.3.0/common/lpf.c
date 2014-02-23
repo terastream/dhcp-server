@@ -94,6 +94,7 @@ int if_register_lpf (info)
 	/* Bind to the interface name */
 	memset (&sa, 0, sizeof sa);
 	sa.sa_family = AF_PACKET;
+// Q: Shoudn't be memcpy used here?
 	strncpy (sa.sa_data, (const char *)info -> ifp, sizeof sa.sa_data);
 	if (bind (sock, &sa, sizeof sa)) {
 		if (errno == ENOPROTOOPT || errno == EPROTONOSUPPORT ||

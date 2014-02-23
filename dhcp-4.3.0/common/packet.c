@@ -211,6 +211,7 @@ ssize_t decode_hw_header (interface, buf, bufix, from)
 	case HTYPE_FDDI:
 		return (decode_fddi_header(interface, buf, bufix, from));
 #endif
+// Q: Why is it possible to exclude previous type, and not inifiniband?
 	case HTYPE_INFINIBAND:
 		log_error("Attempt to decode hw header for infiniband");
 		return (0);
@@ -249,6 +250,7 @@ decode_udp_ip_header(struct interface_info *interface,
   if ((buf + bufix + sizeof(ip)) > endbuf)
 	  return -1;
 
+//Q: Why copying when simple pointer manupulation would be enough?
   /* Copy the IP header into a stack aligned structure for inspection.
    * There may be bits in the IP header that we're not decoding, so we
    * copy out the bits we grok and skip ahead by ip.ip_hl * 4.
@@ -267,6 +269,7 @@ decode_udp_ip_header(struct interface_info *interface,
   if ((upp + sizeof(udp)) > endbuf)
 	  return -1;
 
+//Q: Why copying when simple pointer manupulation would be enough?
   /* Copy the UDP header into a stack aligned structure for inspection. */
   memcpy(&udp, upp, sizeof(udp));
 
@@ -355,6 +358,7 @@ decode_udp_ip_header(struct interface_info *interface,
   if (rbuflen != NULL)
 	*rbuflen = len;
 
+// Q: Is this correct comment?
   /* Return the index to the UDP payload. */
   return ip_len + sizeof udp;
 }

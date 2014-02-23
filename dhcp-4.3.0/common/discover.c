@@ -1029,6 +1029,7 @@ discover_interfaces(int state) {
 			     state == DISCOVER_SERVER))
 			    continue;
 
+// Q: Probably, here it should be ::, not 0.0.0.0?
 			/* If the only address we have is 0.0.0.0, we
 			   shouldn't consider the interface configured. */
 			if (IN6_IS_ADDR_UNSPECIFIED(&a->sin6_addr))
