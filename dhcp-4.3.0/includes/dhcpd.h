@@ -2611,6 +2611,7 @@ isc_result_t interface_setup (void);
 void interface_trace_setup (void);
 
 extern struct in_addr limited_broadcast;
+extern int proxy_local_family;
 extern int local_family;
 extern struct in_addr local_address;
 

@@ -50,6 +50,7 @@ int (*dhcp_interface_shutdown_hook) (struct interface_info *);
 struct in_addr limited_broadcast;
 
 int local_family = AF_INET;
+int proxy_local_family = AF_INET;
 struct in_addr local_address;
 
 void (*bootp_packet_handler) (struct interface_info *,
@@ -240,7 +241,7 @@ begin_iface_scan(struct iface_conf_list *ifaces) {
 	int lifnum;
 #endif
 
-	ifaces->sock = socket(local_family, SOCK_DGRAM, IPPROTO_UDP);
+	ifaces->sock = socket(proxy_local_family, SOCK_DGRAM, IPPROTO_UDP);
 	if (ifaces->sock < 0) {
 		log_error("Error creating socket to list interfaces; %m");
 		return 0;
@@ -324,7 +325,7 @@ next_iface(struct iface_info *info, int *err, struct iface_conf_list *ifaces) {
 		}
 
 		/* Reject if interface address family does not match */
-		if (p->lifr_addr.ss_family != local_family) {
+		if (p->lifr_addr.ss_family != proxy_local_family) {
 			ifaces->next++;
 			continue;
 		}
@@ -446,7 +447,7 @@ begin_iface_scan(struct iface_conf_list *ifaces) {
 	}
 
 #ifdef DHCPv6
-	if (local_family == AF_INET6) {
+	if (proxy_local_family == AF_INET6) {
 		ifaces->fp6 = fopen("/proc/net/if_inet6", "r");
 		if (ifaces->fp6 == NULL) {
 			log_error("Error opening '/proc/net/if_inet6' to "
@@ -725,7 +726,7 @@ next_iface(struct iface_info *info, int *err, struct iface_conf_list *ifaces) {
 	}
 #ifdef DHCPv6
 	if (!(*err)) {
-		if (local_family == AF_INET6)
+		if (proxy_local_family == AF_INET6)
 			return next_iface6(info, err, ifaces);
 	}
 #endif
@@ -742,7 +743,7 @@ end_iface_scan(struct iface_conf_list *ifaces) {
 	close(ifaces->sock);
 	ifaces->sock = -1;
 #ifdef DHCPv6
-	if (local_family == AF_INET6) {
+	if (proxy_local_family == AF_INET6) {
 		fclose(ifaces->fp6);
 		ifaces->fp6 = NULL;
 	}
@@ -961,10 +962,10 @@ discover_interfaces(int state) {
 		   point-to-point in case an OS incorrectly marks them
 		   as broadcast). Also skip down interfaces unless we're
 		   trying to get a list of configurable interfaces. */
-		if ((((local_family == AF_INET &&
+		if ((((proxy_local_family == AF_INET &&
 		    !(info.flags & IFF_BROADCAST)) ||
 #ifdef DHCPv6
-		    (local_family == AF_INET6 &&
+		    (proxy_local_family == AF_INET6 &&
 		    !(info.flags & IFF_MULTICAST)) ||
 #endif
 		      info.flags & IFF_LOOPBACK ||
@@ -991,8 +992,13 @@ discover_interfaces(int state) {
 			(*dhcp_interface_discovery_hook)(tmp);
 		}
 
-		if ((info.addr.ss_family == AF_INET) && 
-		    (local_family == AF_INET)) {
+		/*
+		 * This code is modified so that we get all the addresses, not
+		 * only either IPv4 or IPv6. This is necessary for mixed mode
+		 * operation, and in our case, for DHCPv4-over-DHCPv6 support.
+		 */
+
+		if (info.addr.ss_family == AF_INET) {
 			struct sockaddr_in *a = (struct sockaddr_in*)&info.addr;
 			struct iaddr addr;
 
@@ -1009,16 +1015,17 @@ discover_interfaces(int state) {
 
 			add_ipv4_addr_to_interface(tmp, &a->sin_addr);
 
-			/* invoke the setup hook */
-			addr.len = 4;
-			memcpy(addr.iabuf, &a->sin_addr.s_addr, addr.len);
-			if (dhcp_interface_setup_hook) {
-				(*dhcp_interface_setup_hook)(tmp, &addr);
+			if (local_family == AF_INET) {
+				/* invoke the setup hook */
+				addr.len = 4;
+				memcpy(addr.iabuf, &a->sin_addr.s_addr, addr.len);
+				if (dhcp_interface_setup_hook) {
+					(*dhcp_interface_setup_hook)(tmp, &addr);
+				}
 			}
 		}
 #ifdef DHCPv6
-		else if ((info.addr.ss_family == AF_INET6) && 
-			 (local_family == AF_INET6)) {
+		else if (info.addr.ss_family == AF_INET6) {
 			struct sockaddr_in6 *a = 
 					(struct sockaddr_in6*)&info.addr;
 			struct iaddr addr;
@@ -1037,11 +1044,13 @@ discover_interfaces(int state) {
 
 			add_ipv6_addr_to_interface(tmp, &a->sin6_addr);
 
-			/* invoke the setup hook */
-			addr.len = 16;
-			memcpy(addr.iabuf, &a->sin6_addr, addr.len);
-			if (dhcp_interface_setup_hook) {
-				(*dhcp_interface_setup_hook)(tmp, &addr);
+			if (local_family == AF_INET6) {
+				/* invoke the setup hook */
+				addr.len = 16;
+				memcpy(addr.iabuf, &a->sin6_addr, addr.len);
+				if (dhcp_interface_setup_hook) {
+					(*dhcp_interface_setup_hook)(tmp, &addr);
+				}
 			}
 		}
 #endif /* DHCPv6 */
@@ -1224,7 +1233,7 @@ discover_interfaces(int state) {
 		tmp -> index = -1;
 
 		/* Register the interface... */
-		if (local_family == AF_INET) {
+		if (proxy_local_family == AF_INET) {
 			if_register_receive(tmp);
 			if_register_send(tmp);
 #ifdef DHCPv6
@@ -1268,7 +1277,7 @@ discover_interfaces(int state) {
 			continue;
 		if (tmp -> rfdesc == -1)
 			continue;
-		switch (local_family) {
+		switch (proxy_local_family) {
 #ifdef DHCPv6 
 		case AF_INET6:
 			status = omapi_register_io_object((omapi_object_t *)tmp,
@@ -1296,7 +1305,7 @@ discover_interfaces(int state) {
 		 * we're well beyond that point in terms of mess.
 		 */
 		if (((state == DISCOVER_SERVER) || (state == DISCOVER_RELAY)) &&
-		    (local_family == AF_INET6))
+		    (proxy_local_family == AF_INET6))
 			break;
 #endif
 	} /* for (tmp = interfaces; ... */
@@ -1306,7 +1315,7 @@ discover_interfaces(int state) {
 		log_fatal ("Not configured to listen on any interfaces!");
 	}
 
-	if ((local_family == AF_INET) && !setup_fallback) {
+	if ((proxy_local_family == AF_INET) && !setup_fallback) {
 		setup_fallback = 1;
 		maybe_setup_fallback();
 	}
@@ -1790,7 +1799,7 @@ isc_result_t dhcp_interface_remove (omapi_object_t *lp,
 	/* remove the io object */
 	omapi_unregister_io_object ((omapi_object_t *)interface);
 
-	switch(local_family) {
+	switch(proxy_local_family) {
 #ifdef DHCPv6
 	case AF_INET6:
 		if_deregister6(interface);

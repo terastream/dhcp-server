@@ -293,18 +293,31 @@ main(int argc, char **argv) {
 			quiet_interface_discovery = 1;
 #ifdef DHCPv6
 		} else if (!strcmp(argv[i], "-4")) {
-			if (local_family_set && (local_family != AF_INET)) {
-				log_fatal("Server cannot run in both IPv4 and "
-					  "IPv6 mode at the same time.");
+			if (local_family_set && (local_family != AF_INET) && (proxy_local_family != AF_INET)) {
+				log_fatal("Server cannot run in both IPv4, "
+					  "IPv6 or DHCPv4-over-DHCPv6 "
+					  "mode at the same time.");
 			}
+			proxy_local_family = AF_INET;
 			local_family = AF_INET;
 			local_family_set = 1;
 		} else if (!strcmp(argv[i], "-6")) {
-			if (local_family_set && (local_family != AF_INET6)) {
-				log_fatal("Server cannot run in both IPv4 and "
-					  "IPv6 mode at the same time.");
+			if (local_family_set && (local_family != AF_INET6) && (proxy_local_family != AF_INET6)) {
+				log_fatal("Server cannot run in both IPv4, "
+					  "IPv6 or DHCPv4-over-DHCPv6 "
+					  "mode at the same time.");
 			}
+			proxy_local_family = AF_INET6;
 			local_family = AF_INET6;
+			local_family_set = 1;
+		} else if (!strcmp(argv[i], "-46")) {
+			if (local_family_set && (local_family != AF_INET) && (proxy_local_family != AF_INET6)) {
+				log_fatal("Server cannot run in both IPv4, "
+					  "IPv6 or DHCPv4-over-DHCPv6 "
+					  "mode at the same time.");
+			}
+			proxy_local_family = AF_INET6;
+			local_family = AF_INET;
 			local_family_set = 1;
 #endif /* DHCPv6 */
 		} else if (!strcmp (argv [i], "--version")) {
@@ -461,7 +474,7 @@ main(int argc, char **argv) {
 			log_debug ("binding to environment-specified port %d",
 				   ntohs (local_port));
 		} else {
-			if (local_family == AF_INET) {
+			if (proxy_local_family == AF_INET) {
 				ent = getservbyname("dhcp", "udp");
 				if (ent == NULL) {
 					local_port = htons(67);
@@ -469,7 +482,7 @@ main(int argc, char **argv) {
 					local_port = ent->s_port;
 				}
 			} else {
-				/* INSIST(local_family == AF_INET6); */
+				/* INSIST(proxy_local_family == AF_INET6); */
 				ent = getservbyname("dhcpv6-server", "udp");
 				if (ent == NULL) {
 					local_port = htons(547);
@@ -483,10 +496,10 @@ main(int argc, char **argv) {
 		}
 	}
   
-  	if (local_family == AF_INET) {
+  	if (proxy_local_family == AF_INET) {
 		remote_port = htons(ntohs(local_port) + 1);
 	} else {
-		/* INSIST(local_family == AF_INET6); */
+		/* INSIST(proxy_local_family == AF_INET6); */
 		ent = getservbyname("dhcpv6-client", "udp");
 		if (ent == NULL) {
 			remote_port = htons(546);

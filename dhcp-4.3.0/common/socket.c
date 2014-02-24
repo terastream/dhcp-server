@@ -220,7 +220,7 @@ if_register_socket(struct interface_info *info, int family,
 	 * DHCPv4 sockets; we can't yet support BSD sockets well, much
 	 * less multiple sockets. Make sense only with multicast.
 	 */
-	if ((local_family == AF_INET6) && *do_multicast) {
+	if ((proxy_local_family == AF_INET6) && *do_multicast) {
 		flag = 1;
 		if (setsockopt(sock, SOL_SOCKET, SO_REUSEPORT,
 			       (char *)&flag, sizeof(flag)) < 0) {
@@ -242,7 +242,7 @@ if_register_socket(struct interface_info *info, int family,
 
 #if defined(SO_BINDTODEVICE)
 	/* Bind this socket to this interface. */
-	if ((local_family != AF_INET6) && (info->ifp != NULL) &&
+	if ((proxy_local_family != AF_INET6) && (info->ifp != NULL) &&
 	    setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE,
 			(char *)(info -> ifp), sizeof(*(info -> ifp))) < 0) {
 		log_fatal("setsockopt: SO_BINDTODEVICE: %m");
