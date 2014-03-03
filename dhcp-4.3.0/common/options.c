@@ -58,7 +58,6 @@ int parse_options (packet)
 	/* If we don't see the magic cookie, there's nothing to parse. */
 	if (memcmp (packet -> raw -> options, DHCP_OPTIONS_COOKIE, 4)) {
 		packet -> options_valid = 0;
-printf(">>>EXITING\n");
 		return 1;
 	}
 

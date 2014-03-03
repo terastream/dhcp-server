@@ -65,6 +65,14 @@ struct dhcp_packet {
 			  (actual length dependent on MTU). */
 };
 
+struct dhcpv4_over_dhcpv6_packet {
+	u_int8_t msg_type;	/* Fixed value DHCPV4RESPONSE */
+	u_int8_t flags_hi;
+	u_int16_t flags_lo;	/* Fixed value 0 */
+	u_int16_t option_type;	/* Fixed value DHO_DHCPV4_MSG */
+	u_int16_t option_len;
+};
+
 /* BOOTP (rfc951) message types */
 #define	BOOTREQUEST	1
 #define BOOTREPLY	2

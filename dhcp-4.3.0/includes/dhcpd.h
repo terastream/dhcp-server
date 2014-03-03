@@ -2210,6 +2210,9 @@ void delayed_ack_enqueue(struct lease *);
 void commit_leases_readerdry(void *);
 void flush_ackqueue(void *);
 void dhcp_reply (struct lease *);
+ssize_t send_dhcpv4_over_dhcpv6(struct interface_info *interface,
+                     const unsigned char *raw, size_t len,
+                     struct sockaddr_in6 *to6);
 int find_lease (struct lease **, struct packet *,
 		struct shared_network *, int *, int *, struct lease *,
 		const char *, int);

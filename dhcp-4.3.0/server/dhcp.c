@@ -67,6 +67,26 @@ static const char *dhcp_type_names [] = {
 	"DHCPLEASEUNASSIGNED",
 	"DHCPLEASEUNKNOWN",
 	"DHCPLEASEACTIVE"
+	"type 14",
+	"type 15",
+	"type 16",
+	"type 17",
+	"type 18",
+	"type 19",
+	"type 20",
+	"type 21",
+	"type 22",
+	"type 23",
+	"type 24",
+	"type 25",
+	"type 26",
+	"type 27",
+	"type 28",
+	"type 29",
+	"type 30",
+	"type 31",
+	"DHCPV4QUERY",
+	"DHCPV4RESPONSE",
 };
 const int dhcp_type_name_max = ((sizeof dhcp_type_names) / sizeof (char *));
 
@@ -3215,7 +3235,7 @@ void ack_lease (packet, lease, offer, when, msg, ms_nulltp, hp)
 #if defined(DELAYED_ACK)
 		if (enqueue)
 			delayed_ack_enqueue(lease);
-		else 
+		else
 #endif
 			dhcp_reply(lease);
 	}
@@ -3360,6 +3380,7 @@ void dhcp_reply (lease)
 	unsigned packet_length;
 	struct dhcp_packet raw;
 	struct sockaddr_in to;
+	struct sockaddr_in6 to6;
 	struct in_addr from;
 	struct hardware hto;
 	int result;
@@ -3482,11 +3503,16 @@ void dhcp_reply (lease)
 	hto.hlen = lease -> hardware_addr.hlen;
 	memcpy (hto.hbuf, lease -> hardware_addr.hbuf, hto.hlen);
 
-	to.sin_family = AF_INET;
+	/* Check if running in DHCPv4-over-DHCPv6 mode */
+	if (proxy_local_family == local_family) {
+printf("%d\n", state->packet->client_port);
+printf("%d %d\n", proxy_local_family, local_family);
+		to.sin_family = AF_INET;
 #ifdef HAVE_SA_LEN
-	to.sin_len = sizeof to;
+		to.sin_len = sizeof to;
 #endif
-	memset (to.sin_zero, 0, sizeof to.sin_zero);
+		memset (to.sin_zero, 0, sizeof to.sin_zero);
+	}
 
 #ifdef DEBUG_PACKET
 	dump_raw ((unsigned char *)&raw, packet_length);
@@ -3497,89 +3523,99 @@ void dhcp_reply (lease)
 	if (packet_length < BOOTP_MIN_LEN)
 		packet_length = BOOTP_MIN_LEN;
 
-	/* If this was gatewayed, send it back to the gateway... */
-	if (raw.giaddr.s_addr) {
-		to.sin_addr = raw.giaddr;
-		if (raw.giaddr.s_addr != htonl (INADDR_LOOPBACK))
-			to.sin_port = local_port;
-		else
-			to.sin_port = remote_port; /* For debugging. */
+	/* Check if running in DHCPv4-over-DHCPv6 mode */
+	if (proxy_local_family == local_family) {
 
-		if (fallback_interface) {
-			result = send_packet(fallback_interface, NULL, &raw,
-					     packet_length, raw.siaddr, &to,
-					     NULL);
-			if (result < 0) {
-				log_error ("%s:%d: Failed to send %d byte long "
-					   "packet over %s interface.", MDL,
-					   packet_length,
-					   fallback_interface->name);
+		/* If this was gatewayed, send it back to the gateway... */
+		if (raw.giaddr.s_addr) {
+			to.sin_addr = raw.giaddr;
+			if (raw.giaddr.s_addr != htonl (INADDR_LOOPBACK))
+				to.sin_port = local_port;
+			else
+				to.sin_port = remote_port; /* For debugging. */
+
+			if (fallback_interface) {
+				result = send_packet(fallback_interface, NULL, &raw,
+						     packet_length, raw.siaddr, &to,
+						     NULL);
+				if (result < 0) {
+					log_error ("%s:%d: Failed to send %d byte long "
+						   "packet over %s interface.", MDL,
+						   packet_length,
+						   fallback_interface->name);
+				}
+
+				free_lease_state (state, MDL);
+				lease -> state = (struct lease_state *)0;
+				return;
 			}
 
+		/* If the client is RENEWING, unicast to the client using the
+		   regular IP stack.  Some clients, particularly those that
+		   follow RFC1541, are buggy, and send both ciaddr and server
+		   identifier.  We deal with this situation by assuming that
+		   if we got both dhcp-server-identifier and ciaddr, and
+		   giaddr was not set, then the client is on the local
+		   network, and we can therefore unicast or broadcast to it
+		   successfully.  A client in REQUESTING state on another
+		   network that's making this mistake will have set giaddr,
+		   and will therefore get a relayed response from the above
+		   code. */
+		} else if (raw.ciaddr.s_addr &&
+			   !((state -> got_server_identifier ||
+			      (raw.flags & htons (BOOTP_BROADCAST))) &&
+			     /* XXX This won't work if giaddr isn't zero, but it is: */
+			     (state -> shared_network ==
+			      lease -> subnet -> shared_network)) &&
+			   state -> offer == DHCPACK) {
+			to.sin_addr = raw.ciaddr;
+			to.sin_port = remote_port;
 
-			free_lease_state (state, MDL);
-			lease -> state = (struct lease_state *)0;
-			return;
-		}
+			if (fallback_interface) {
+				result = send_packet(fallback_interface, NULL, &raw,
+						     packet_length, raw.siaddr, &to,
+						     NULL);
+				if (result < 0) {
+					log_error("%s:%d: Failed to send %d byte long"
+						  " packet over %s interface.", MDL,
+						   packet_length,
+						   fallback_interface->name);
+				}
 
-	/* If the client is RENEWING, unicast to the client using the
-	   regular IP stack.  Some clients, particularly those that
-	   follow RFC1541, are buggy, and send both ciaddr and server
-	   identifier.  We deal with this situation by assuming that
-	   if we got both dhcp-server-identifier and ciaddr, and
-	   giaddr was not set, then the client is on the local
-	   network, and we can therefore unicast or broadcast to it
-	   successfully.  A client in REQUESTING state on another
-	   network that's making this mistake will have set giaddr,
-	   and will therefore get a relayed response from the above
-	   code. */
-	} else if (raw.ciaddr.s_addr &&
-		   !((state -> got_server_identifier ||
-		      (raw.flags & htons (BOOTP_BROADCAST))) &&
-		     /* XXX This won't work if giaddr isn't zero, but it is: */
-		     (state -> shared_network ==
-		      lease -> subnet -> shared_network)) &&
-		   state -> offer == DHCPACK) {
-		to.sin_addr = raw.ciaddr;
-		to.sin_port = remote_port;
-
-		if (fallback_interface) {
-			result = send_packet(fallback_interface, NULL, &raw,
-					     packet_length, raw.siaddr, &to,
-					     NULL);
-			if (result < 0) {
-				log_error("%s:%d: Failed to send %d byte long"
-					  " packet over %s interface.", MDL,
-					   packet_length,
-					   fallback_interface->name);
+				free_lease_state (state, MDL);
+				lease -> state = (struct lease_state *)0;
+				return;
 			}
 
-			free_lease_state (state, MDL);
-			lease -> state = (struct lease_state *)0;
-			return;
+		/* If it comes from a client that already knows its address
+		   and is not requesting a broadcast response, and we can
+		   unicast to a client without using the ARP protocol, sent it
+		   directly to that client. */
+		} else if (!(raw.flags & htons (BOOTP_BROADCAST)) &&
+			   can_unicast_without_arp (state -> ip)) {
+			to.sin_addr = raw.yiaddr;
+			to.sin_port = remote_port;
+
+		/* Otherwise, broadcast it on the local network. */
+		} else {
+			to.sin_addr = limited_broadcast;
+			to.sin_port = remote_port;
+			if (!(lease -> flags & UNICAST_BROADCAST_HACK))
+				unicastp = 0;
 		}
 
-	/* If it comes from a client that already knows its address
-	   and is not requesting a broadcast response, and we can
-	   unicast to a client without using the ARP protocol, sent it
-	   directly to that client. */
-	} else if (!(raw.flags & htons (BOOTP_BROADCAST)) &&
-		   can_unicast_without_arp (state -> ip)) {
-		to.sin_addr = raw.yiaddr;
-		to.sin_port = remote_port;
+		memcpy (&from, state -> from.iabuf, sizeof from);
 
-	/* Otherwise, broadcast it on the local network. */
+		result = send_packet(state->ip, NULL, &raw, packet_length,
+				      from, &to, unicastp ? &hto : NULL);
 	} else {
-		to.sin_addr = limited_broadcast;
-		to.sin_port = remote_port;
-		if (!(lease -> flags & UNICAST_BROADCAST_HACK))
-			unicastp = 0;
+		to6.sin6_family = AF_INET6;
+		to6.sin6_port = state->packet->client_port;
+		memcpy(&to6.sin6_addr, state->packet->client_addr.iabuf, state->packet->client_addr.len);
+
+		result = send_dhcpv4_over_dhcpv6(state->ip, (unsigned char *)&raw, packet_length, &to6);
 	}
 
-	memcpy (&from, state -> from.iabuf, sizeof from);
-
-	result = send_packet(state->ip, NULL, &raw, packet_length,
-			      from, &to, unicastp ? &hto : NULL);
 	if (result < 0) {
 	    log_error ("%s:%d: Failed to send %d byte long "
 		       "packet over %s interface.", MDL,
@@ -3592,6 +3628,23 @@ void dhcp_reply (lease)
 
 	free_lease_state (state, MDL);
 	lease -> state = (struct lease_state *)0;
+}
+
+ssize_t send_dhcpv4_over_dhcpv6(struct interface_info *interface,
+                     const unsigned char *raw, size_t len,
+                     struct sockaddr_in6 *to6)
+{
+	unsigned char dhcpv6_packet[len + 8];
+	struct dhcpv4_over_dhcpv6_packet *dhcp4o6 = (struct dhcpv4_over_dhcpv6_packet *)&dhcpv6_packet;
+
+	memcpy(&dhcpv6_packet + 8, raw, len);
+	dhcp4o6->msg_type = DHCPV4RESPONSE;
+	dhcp4o6->flags_hi = 0;
+	dhcp4o6->flags_lo = 0;
+	dhcp4o6->option_type = htons(DHO_DHCPV4_MSG);
+	dhcp4o6->option_len = htons(len);
+
+	return send_packet6(interface, (const unsigned char *)&dhcpv6_packet, len + 8, to6);
 }
 
 int find_lease (struct lease **lp,
