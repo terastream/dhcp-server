@@ -58,6 +58,7 @@ int parse_options (packet)
 	/* If we don't see the magic cookie, there's nothing to parse. */
 	if (memcmp (packet -> raw -> options, DHCP_OPTIONS_COOKIE, 4)) {
 		packet -> options_valid = 0;
+printf(">>>EXITING\n");
 		return 1;
 	}
 
@@ -3935,12 +3936,13 @@ do_packet6(struct interface_info *interface, const char *packet,
 	}
 
 	if (msg_type == DHCPV4QUERY) {
-		/* The last argument, was_unicast, has to be inferred from the flags */
-		do_packet(interface, decoded_packet->raw + 8, len - 8, from_port, *from, 0);
-	} else
+		struct hardware hfrom;
+		memset(&hfrom, 0, sizeof(hfrom));
+		do_packet(interface, (struct dhcp_packet *)(packet + 8), len - 8, from_port, *from, &hfrom);
+	} else {
 		dhcpv6(decoded_packet);
-
-	packet_dereference(&decoded_packet, MDL);
+		packet_dereference(&decoded_packet, MDL);
+	}
 
 #if defined (DEBUG_MEMORY_LEAKAGE)
 	log_info("generation %ld: %ld new, %ld outstanding, %ld long-term",
