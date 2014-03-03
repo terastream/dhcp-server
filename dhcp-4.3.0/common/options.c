@@ -3934,7 +3934,11 @@ do_packet6(struct interface_info *interface, const char *packet,
 		}
 	}
 
-	dhcpv6(decoded_packet);
+	if (msg_type == DHCPV4QUERY) {
+		/* The last argument, was_unicast, has to be inferred from the flags */
+		do_packet(interface, decoded_packet->raw + 8, len - 8, from_port, *from, 0);
+	} else
+		dhcpv6(decoded_packet);
 
 	packet_dereference(&decoded_packet, MDL);
 

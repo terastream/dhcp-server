@@ -162,6 +162,8 @@ struct dhcp_packet {
 #define DHO_VIVCO_SUBOPTIONS			124
 #define DHO_VIVSO_SUBOPTIONS			125
 
+#define DHO_DHCPV4_MSG				254
+
 #define DHO_END					255
 
 /* DHCP message types. */
@@ -178,6 +180,9 @@ struct dhcp_packet {
 #define DHCPLEASEUNKNOWN	12
 #define DHCPLEASEACTIVE		13
 
+/* FIXME: Change/check values when IANA assignes them */
+#define DHCPV4QUERY		32
+#define DHCPV4RESPONSE		33
 
 /* Relay Agent Information option subtypes: */
 #define RAI_CIRCUIT_ID	1
