@@ -3609,9 +3609,11 @@ printf("%d %d\n", proxy_local_family, local_family);
 		result = send_packet(state->ip, NULL, &raw, packet_length,
 				      from, &to, unicastp ? &hto : NULL);
 	} else {
+		memset(&to6, 0, sizeof(to6));
 		to6.sin6_family = AF_INET6;
 		to6.sin6_port = state->packet->client_port;
-		memcpy(&to6.sin6_addr, state->packet->client_addr.iabuf, state->packet->client_addr.len);
+		// memcpy(&to6.sin6_addr, state->packet->client_addr.iabuf, state->packet->client_addr.len);
+		inet_pton(AF_INET6, "2000::24c9:bdff:fef9:af6c", &to6.sin6_addr);
 
 		result = send_dhcpv4_over_dhcpv6(state->ip, (unsigned char *)&raw, packet_length, &to6);
 	}
@@ -3635,9 +3637,9 @@ ssize_t send_dhcpv4_over_dhcpv6(struct interface_info *interface,
                      struct sockaddr_in6 *to6)
 {
 	unsigned char dhcpv6_packet[len + 8];
-	struct dhcpv4_over_dhcpv6_packet *dhcp4o6 = (struct dhcpv4_over_dhcpv6_packet *)&dhcpv6_packet;
+	struct dhcpv4_over_dhcpv6_packet *dhcp4o6 = (struct dhcpv4_over_dhcpv6_packet *)dhcpv6_packet;
 
-	memcpy(&dhcpv6_packet + 8, raw, len);
+	memcpy(dhcpv6_packet + 8, raw, len);
 	dhcp4o6->msg_type = DHCPV4RESPONSE;
 	dhcp4o6->flags_hi = 0;
 	dhcp4o6->flags_lo = 0;
