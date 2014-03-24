@@ -124,6 +124,15 @@ if test "$enable_dhcpv6" != "no"; then
 		  [Define to 1 to include DHCPv6 support.])
 fi
 
+# DHCPv4o6 optional compile-time feature.
+AC_ARG_ENABLE(dhcpv4o6,
+	AS_HELP_STRING([--enable-dhcpv4o6],[enable support for DHCPv4-over-DHCPv6 (default is no)]))
+# DHCPv4o6 is off by default, so define if it is explicitly enabled.
+if test "$enable_dhcpv4o6" == "yes"; then
+	AC_DEFINE([DHCPv4o6], [1], 
+		  [Define to 1 to include DHCPv4o6 support.])
+fi
+
 # PARANOIA is off by default (until we can test it with all features)
 AC_ARG_ENABLE(paranoia,
 	AS_HELP_STRING([--enable-paranoia],[enable support for chroot/setuid (default is no)]))

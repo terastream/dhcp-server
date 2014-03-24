@@ -56,17 +56,19 @@
 # endif
 #endif
 
-#if defined(DHCPv6)
+#if defined(DHCPv6) || defined(DHCPv4o6)
 /*
  * XXX: this is gross.  we need to go back and overhaul the API for socket
  * handling.
  */
 static int no_global_v6_socket = 0;
+
+#if defined(DHCPv6)
 static unsigned int global_v6_socket_references = 0;
 static int global_v6_socket = -1;
-
 static void if_register_multicast(struct interface_info *info);
-#endif
+#endif /* DHCPv6 */
+#endif /* defined(DHCPv6) || defined(DHCPv4o6) */
 
 /*
  * We can use a single socket for AF_INET (similar to AF_INET6) on all
@@ -709,7 +711,7 @@ static size_t CMSG_SPACE(size_t len) {
 
 #endif /* DHCPv6 */
 
-#if defined(DHCPv6) || \
+#if defined(DHCPv6) || defined(DHCPv4o6) || \
 	(defined(IP_PKTINFO) && defined(IP_RECVPKTINFO) && \
 	 defined(USE_V4_PKTINFO))
 /*
@@ -728,9 +730,9 @@ allocate_cmsg_cbuf(void) {
 	control_buf = dmalloc(control_buf_len, MDL);
 	return;
 }
-#endif /* DHCPv6, IP_PKTINFO ... */
+#endif /* DHCPv6, DHCPv4o6, IP_PKTINFO ... */
 
-#ifdef DHCPv6
+#if defined(DHCPv6) || defined(DHCPv4o6)
 /* 
  * For both send_packet6() and receive_packet6() we need to use the 
  * sendmsg()/recvmsg() functions rather than the simpler send()/recv()
@@ -827,7 +829,7 @@ ssize_t send_packet6(struct interface_info *interface,
 	}
 	return result;
 }
-#endif /* DHCPv6 */
+#endif /* defined(DHCPv6) || defined(DHCPv4o6) */
 
 #ifdef USE_SOCKET_RECEIVE
 ssize_t receive_packet (interface, buf, len, from, hfrom)
@@ -955,7 +957,7 @@ ssize_t receive_packet (interface, buf, len, from, hfrom)
 
 #endif /* USE_SOCKET_RECEIVE */
 
-#ifdef DHCPv6
+#if defined(DHCPv6) || defined(DHCPv4o6)
 ssize_t 
 receive_packet6(struct interface_info *interface, 
 		unsigned char *buf, size_t len, 
@@ -1045,7 +1047,7 @@ receive_packet6(struct interface_info *interface,
 
 	return (result);
 }
-#endif /* DHCPv6 */
+#endif /* defined(DHCPv6) || defined(DHCPv4o6) */
 
 #if defined (USE_SOCKET_FALLBACK)
 /* This just reads in a packet and silently discards it. */

@@ -16,6 +16,9 @@
 /* Define to 1 to include DHCPv6 support. */
 #undef DHCPv6
 
+/* Define to 1 to include DHCPv4o6 support. */
+#undef DHCPv4o6
+
 /* Define to any value to chroot() prior to loading config. */
 #undef EARLY_CHROOT
 

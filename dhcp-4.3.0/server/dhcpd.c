@@ -167,7 +167,7 @@ main(int argc, char **argv) {
 	int no_dhcpd_conf = 0;
 	int no_dhcpd_db = 0;
 	int no_dhcpd_pid = 0;
-#ifdef DHCPv6
+#if defined (DHCPv6) || defined(DHCPv4o6)
 	int local_family_set = 0;
 #endif /* DHCPv6 */
 #if defined (TRACING)
@@ -291,7 +291,7 @@ main(int argc, char **argv) {
 		} else if (!strcmp (argv [i], "-q")) {
 			quiet = 1;
 			quiet_interface_discovery = 1;
-#ifdef DHCPv6
+#if defined(DHCPv6) || defined(DHCPv4o6)
 		} else if (!strcmp(argv[i], "-4")) {
 			if (local_family_set && (local_family != AF_INET) && (proxy_local_family != AF_INET)) {
 				log_fatal("Server cannot run in both IPv4, "
@@ -301,6 +301,7 @@ main(int argc, char **argv) {
 			proxy_local_family = AF_INET;
 			local_family = AF_INET;
 			local_family_set = 1;
+#if defined(DHCPv6)
 		} else if (!strcmp(argv[i], "-6")) {
 			if (local_family_set && (local_family != AF_INET6) && (proxy_local_family != AF_INET6)) {
 				log_fatal("Server cannot run in both IPv4, "
@@ -310,6 +311,8 @@ main(int argc, char **argv) {
 			proxy_local_family = AF_INET6;
 			local_family = AF_INET6;
 			local_family_set = 1;
+#endif /* DHCPv6 */
+#if defined(DHCPv4o6)
 		} else if (!strcmp(argv[i], "-46")) {
 			if (local_family_set && (local_family != AF_INET) && (proxy_local_family != AF_INET6)) {
 				log_fatal("Server cannot run in both IPv4, "
@@ -319,7 +322,8 @@ main(int argc, char **argv) {
 			proxy_local_family = AF_INET6;
 			local_family = AF_INET;
 			local_family_set = 1;
-#endif /* DHCPv6 */
+#endif /* DHCPv4o6 */
+#endif /* defined(DHCPv6) || defined(DHCPv4o6) */
 		} else if (!strcmp (argv [i], "--version")) {
 			log_info("isc-dhcpd-%s", PACKAGE_VERSION);
 			exit (0);
@@ -1110,11 +1114,15 @@ usage(void) {
 	log_info(arr);
 
 	log_fatal("Usage: dhcpd [-p <UDP port #>] [-f] [-d] [-q] [-t|-T]\n"
-#ifdef DHCPv6
+#if defined(DHCPv6) && !defined(DHCPv4o6)
 		  "             [-4|-6] [-cf config-file] [-lf lease-file]\n"
-#else /* !DHCPv6 */
+#elif !defined(DHCPv6) && defined(DHCPv4o6)
+		  "             [-4|-46] [-cf config-file] [-lf lease-file]\n"
+#elif defined(DHCPv6) && defined(DHCPv4o6)
+		  "             [-4|-6|-46] [-cf config-file] [-lf lease-file]\n"
+#else
 		  "             [-cf config-file] [-lf lease-file]\n"
-#endif /* DHCPv6 */
+#endif
 #if defined (PARANOIA)
 		   /* meld into the following string */
 		  "             [-user user] [-group group] [-chroot dir]\n"

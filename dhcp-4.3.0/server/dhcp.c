@@ -3380,7 +3380,9 @@ void dhcp_reply (lease)
 	unsigned packet_length;
 	struct dhcp_packet raw;
 	struct sockaddr_in to;
+#ifdef DHCPv4o6
 	struct sockaddr_in6 to6;
+#endif /* DHCPv4o6 */
 	struct in_addr from;
 	struct hardware hto;
 	int result;
@@ -3505,8 +3507,6 @@ void dhcp_reply (lease)
 
 	/* Check if running in DHCPv4-over-DHCPv6 mode */
 	if (proxy_local_family == local_family) {
-printf("%d\n", state->packet->client_port);
-printf("%d %d\n", proxy_local_family, local_family);
 		to.sin_family = AF_INET;
 #ifdef HAVE_SA_LEN
 		to.sin_len = sizeof to;
@@ -3523,8 +3523,10 @@ printf("%d %d\n", proxy_local_family, local_family);
 	if (packet_length < BOOTP_MIN_LEN)
 		packet_length = BOOTP_MIN_LEN;
 
-	/* Check if running in DHCPv4-over-DHCPv6 mode */
+#ifdef DHCPv4o6
+	/* Check if NOT running in DHCPv4-over-DHCPv6 mode */
 	if (proxy_local_family == local_family) {
+#endif /* DHCPv4o6 */
 
 		/* If this was gatewayed, send it back to the gateway... */
 		if (raw.giaddr.s_addr) {
@@ -3608,6 +3610,7 @@ printf("%d %d\n", proxy_local_family, local_family);
 
 		result = send_packet(state->ip, NULL, &raw, packet_length,
 				      from, &to, unicastp ? &hto : NULL);
+#ifdef DHCPv4o6
 	} else {
 		memset(&to6, 0, sizeof(to6));
 		to6.sin6_family = AF_INET6;
@@ -3617,6 +3620,7 @@ printf("%d %d\n", proxy_local_family, local_family);
 
 		result = send_dhcpv4_over_dhcpv6(state->ip, (unsigned char *)&raw, packet_length, &to6);
 	}
+#endif /* DHCPv4o6 */
 
 	if (result < 0) {
 	    log_error ("%s:%d: Failed to send %d byte long "
@@ -3632,6 +3636,7 @@ printf("%d %d\n", proxy_local_family, local_family);
 	lease -> state = (struct lease_state *)0;
 }
 
+#ifdef DHCPv4o6
 ssize_t send_dhcpv4_over_dhcpv6(struct interface_info *interface,
                      const unsigned char *raw, size_t len,
                      struct sockaddr_in6 *to6)
@@ -3648,6 +3653,7 @@ ssize_t send_dhcpv4_over_dhcpv6(struct interface_info *interface,
 
 	return send_packet6(interface, (const unsigned char *)&dhcpv6_packet, len + 8, to6);
 }
+#endif /* DHCPv4o6 */
 
 int find_lease (struct lease **lp,
 		struct packet *packet, struct shared_network *share, int *ours,

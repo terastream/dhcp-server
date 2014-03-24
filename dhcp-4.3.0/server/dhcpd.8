@@ -57,6 +57,8 @@ dhcpd - Dynamic Host Configuration Protocol Server
 .B -4
 | 
 .B -6
+| 
+.B -46
 ]
 [
 .B -s
@@ -114,7 +116,12 @@ startup the server  may be started for one or the other via the
 .B -4
 or 
 .B -6
-arguments.
+arguments. Additionally, there is DHCPv4-over-DHCPv6 mode in which
+DHCPv4 messages are transported within DHCPv6 messages. This mode
+is intended for IPv6 only networks that need IPv4 configuration.
+To start server in that mode use the
+.B -46
+argument.
 .PP
 On startup, dhcpd reads the
 .IR dhcpd.conf
@@ -194,15 +201,18 @@ Run as a DHCP server. This is the default and cannot be combined with
 \fB\-6\fR.
 .TP
 .BI \-6
-Run as a DHCPv6 server. This cannot be combined with \fB\-4\fR.
+Run as a DHCPv6 server. This cannot be combined with \fB\-4\fR or \fB\-46\fR.
+.TP
+.BI \-46
+Run as a DHCPv4o6 server. This cannot be combined with \fB\-4\fR or \fB\-6\fR.
 .TP
 .BI \-p \ port
 The udp port number on which 
 .B dhcpd
 should listen.  If unspecified
 .B dhcpd
-uses the default port of 67.  This is mostly useful for debugging
-purposes.
+uses the default port of 67 for DHCPv4 and 547 for DHCPv6 or DHCPv4-over-DHCPv6.
+This is mostly useful for debugging purposes.
 .TP
 .BI \-s \ address
 Specify an address or host name to which 

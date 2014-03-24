@@ -741,6 +741,7 @@ enable_execute
 enable_tracing
 enable_delayed_ack
 enable_dhcpv6
+enable_dhcpv4o6
 enable_paranoia
 enable_early_chroot
 enable_ipv4_pktinfo
@@ -1406,6 +1407,8 @@ Optional Features:
                           is yes)
   --enable-delayed-ack    queues multiple DHCPACK replies (default is no)
   --enable-dhcpv6         enable support for DHCPv6 (default is yes)
+  --enable-dhcpv4o6       enable support for DHCPv4-over-DHCPv6 (default is
+                          no)
   --enable-paranoia       enable support for chroot/setuid (default is no)
   --enable-early-chroot   enable chrooting prior to configuration (default is
                           no)
@@ -5330,6 +5333,19 @@ fi
 if test "$enable_dhcpv6" != "no"; then
 
 $as_echo "#define DHCPv6 1" >>confdefs.h
+
+fi
+
+# DHCPv4o6 optional compile-time feature.
+# Check whether --enable-dhcpv4o6 was given.
+if test "${enable_dhcpv4o6+set}" = set; then :
+  enableval=$enable_dhcpv4o6;
+fi
+
+# DHCPv4o6 is off by default, so define if it is explicitly enabled.
+if test "$enable_dhcpv4o6" == "yes"; then
+
+$as_echo "#define DHCPv4o6 1" >>confdefs.h
 
 fi
 
