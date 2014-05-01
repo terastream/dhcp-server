@@ -42,9 +42,16 @@ struct iaddr subnet_number (addr, mask)
 
 	if (addr.len > sizeof(addr.iabuf))
 		log_fatal("subnet_number():%s:%d: Invalid addr length.", MDL);
+
+#if 0
+	/*
+	 * Why is this check here, and that few lines later the same check
+	 * but this time without beeing fatal error?
+	 */
 	if (addr.len != mask.len)
 		log_fatal("subnet_number():%s:%d: Addr/mask length mismatch.",
 			  MDL);
+#endif
 
 	rv.len = 0;
 

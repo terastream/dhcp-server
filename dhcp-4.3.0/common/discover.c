@@ -58,12 +58,12 @@ void (*bootp_packet_handler) (struct interface_info *,
 			      unsigned int,
 			      struct iaddr, struct hardware *);
 
-#ifdef DHCPv6
+#if defined(DHCPv6) || defined(DHCPv4o6)
 void (*dhcpv6_packet_handler)(struct interface_info *,
 			      const char *, int,
 			      int, const struct iaddr *,
 			      isc_boolean_t);
-#endif /* DHCPv6 */
+#endif /* DHCPv6 || DHCPv4o6 */
 
 
 omapi_object_type_t *dhcp_type_interface;
@@ -388,7 +388,7 @@ end_iface_scan(struct iface_conf_list *ifaces) {
 struct iface_conf_list {
 	int sock;	/* file descriptor used to get information */
 	FILE *fp;	/* input from /proc/net/dev */
-#ifdef DHCPv6
+#if defined(DHCPv6) || defined(DHCPv4o6)
 	FILE *fp6;	/* input from /proc/net/if_inet6 */
 #endif
 };
@@ -446,7 +446,7 @@ begin_iface_scan(struct iface_conf_list *ifaces) {
 		return 0;
 	}
 
-#ifdef DHCPv6
+#if defined(DHCPv6) || defined(DHCPv4o6)
 	if (proxy_local_family == AF_INET6) {
 		ifaces->fp6 = fopen("/proc/net/if_inet6", "r");
 		if (ifaces->fp6 == NULL) {
@@ -589,7 +589,7 @@ next_iface4(struct iface_info *info, int *err, struct iface_conf_list *ifaces) {
 	}
 }
 
-#ifdef DHCPv6
+#if defined(DHCPv6) || defined(DHCPv4o6)
 /*
  * Read our IPv6 interfaces from /proc/net/if_inet6.
  *
@@ -711,7 +711,7 @@ next_iface6(struct iface_info *info, int *err, struct iface_conf_list *ifaces) {
 	*err = 0;
 	return 1;
 }
-#endif /* DHCPv6 */
+#endif /* DHCPv6 || DHCPv4o6 */
 
 /*
  * Retrieve the next interface.
@@ -724,7 +724,7 @@ next_iface(struct iface_info *info, int *err, struct iface_conf_list *ifaces) {
 	if (next_iface4(info, err, ifaces)) {
 		return 1;
 	}
-#ifdef DHCPv6
+#if defined(DHCPv6) || defined(DHCPv4o6)
 	if (!(*err)) {
 		if (proxy_local_family == AF_INET6)
 			return next_iface6(info, err, ifaces);
@@ -742,7 +742,7 @@ end_iface_scan(struct iface_conf_list *ifaces) {
 	ifaces->fp = NULL;
 	close(ifaces->sock);
 	ifaces->sock = -1;
-#ifdef DHCPv6
+#if defined(DHCPv6) || defined(DHCPv4o6)
 	if (proxy_local_family == AF_INET6) {
 		fclose(ifaces->fp6);
 		ifaces->fp6 = NULL;
@@ -869,7 +869,7 @@ add_ipv4_addr_to_interface(struct interface_info *iface,
 	iface->addresses[iface->address_count++] = *addr;
 }
 
-#ifdef DHCPv6
+#if defined(DHCPv6) || defined(DHCPv4o6)
 /* XXX: perhaps create drealloc() rather than do it manually */
 void
 add_ipv6_addr_to_interface(struct interface_info *iface, 
@@ -906,7 +906,7 @@ add_ipv6_addr_to_interface(struct interface_info *iface,
 	}
 	iface->v6addresses[iface->v6address_count++] = *addr;
 }
-#endif /* DHCPv6 */
+#endif /* DHCPv6 || DHCPv4o6 */
 
 /* Use the SIOCGIFCONF ioctl to get a list of all the attached interfaces.
    For each interface that's of type INET and not the loopback interface,
@@ -922,9 +922,9 @@ discover_interfaces(int state) {
 	struct interface_info *tmp;
 	struct interface_info *last, *next;
 
-#ifdef DHCPv6
+#if defined(DHCPv6) || defined(DHCPv4o6)
         char abuf[sizeof("ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255")];
-#endif /* DHCPv6 */
+#endif /* DHCPv6 || DHCPv4o6 */
 
 
 	struct subnet *subnet;
@@ -964,7 +964,7 @@ discover_interfaces(int state) {
 		   trying to get a list of configurable interfaces. */
 		if ((((proxy_local_family == AF_INET &&
 		    !(info.flags & IFF_BROADCAST)) ||
-#ifdef DHCPv6
+#if defined(DHCPv6) || defined(DHCPv4o6)
 		    (proxy_local_family == AF_INET6 &&
 		    !(info.flags & IFF_MULTICAST)) ||
 #endif
@@ -1015,7 +1015,7 @@ discover_interfaces(int state) {
 
 			add_ipv4_addr_to_interface(tmp, &a->sin_addr);
 
-			if (local_family == AF_INET) {
+			if (proxy_local_family == AF_INET) {
 				/* invoke the setup hook */
 				addr.len = 4;
 				memcpy(addr.iabuf, &a->sin_addr.s_addr, addr.len);
@@ -1024,7 +1024,7 @@ discover_interfaces(int state) {
 				}
 			}
 		}
-#ifdef DHCPv6
+#if defined(DHCPv6) || defined(DHCPv4o6)
 		else if (info.addr.ss_family == AF_INET6) {
 			struct sockaddr_in6 *a = 
 					(struct sockaddr_in6*)&info.addr;
@@ -1044,7 +1044,7 @@ discover_interfaces(int state) {
 
 			add_ipv6_addr_to_interface(tmp, &a->sin6_addr);
 
-			if (local_family == AF_INET6) {
+			if (proxy_local_family == AF_INET6) {
 				/* invoke the setup hook */
 				addr.len = 16;
 				memcpy(addr.iabuf, &a->sin6_addr, addr.len);
@@ -1053,7 +1053,7 @@ discover_interfaces(int state) {
 				}
 			}
 		}
-#endif /* DHCPv6 */
+#endif /* DHCPv6 || DHCPv4o6 */
 	}
 
 	if (err) {
@@ -1103,16 +1103,17 @@ discover_interfaces(int state) {
 				interface_reference(&tmp, next, MDL);
 			continue;
 		}
+
 		if ((tmp -> flags & INTERFACE_AUTOMATIC) &&
 		    state == DISCOVER_REQUESTED)
 			tmp -> flags &= ~(INTERFACE_AUTOMATIC |
 					  INTERFACE_REQUESTED);
 
-#ifdef DHCPv6
+#if defined(DHCPv6) || defined(DHCPv4o6)
 		if (!(tmp->flags & INTERFACE_REQUESTED)) {
 #else
 		if (!tmp -> ifp || !(tmp -> flags & INTERFACE_REQUESTED)) {
-#endif /* DHCPv6 */
+#endif /* DHCPv6 || DHCPv4o6 */
 			if ((tmp -> flags & INTERFACE_REQUESTED) != ir)
 				log_fatal ("%s: not found", tmp -> name);
 			if (!last) {
@@ -1120,7 +1121,8 @@ discover_interfaces(int state) {
 					interface_dereference (&interfaces,
 							       MDL);
 				if (next)
-				interface_reference (&interfaces, next, MDL);
+					interface_reference (&interfaces,
+								next, MDL);
 			} else {
 				interface_dereference (&last -> next, MDL);
 				if (next)
@@ -1141,6 +1143,10 @@ discover_interfaces(int state) {
 			interface_dereference (&tmp, MDL);
 			if (next)
 				interface_reference (&tmp, next, MDL);
+
+			/*
+			 * Why is this continue here?
+			 */
 			continue;
 		}
 		last = tmp;
@@ -1148,13 +1154,13 @@ discover_interfaces(int state) {
 		/* We must have a subnet declaration for each interface. */
 		if (!tmp->shared_network && (state == DISCOVER_SERVER)) {
 			log_error("%s", "");
-			if (local_family == AF_INET) {
+			if (proxy_local_family == AF_INET) {
 				log_error("No subnet declaration for %s (%s).",
 					  tmp->name, 
 					  (tmp->addresses == NULL) ?
 					   "no IPv4 addresses" :
 					   inet_ntoa(tmp->addresses[0]));
-#ifdef DHCPv6
+#if defined(DHCPv6) || defined(DHCPv4o6)
 			} else {
 				if (tmp->v6addresses != NULL) {
 					inet_ntop(AF_INET6, 
@@ -1167,13 +1173,13 @@ discover_interfaces(int state) {
 				log_error("No subnet6 declaration for %s (%s).",
 					  tmp->name,
 					  abuf);
-#endif /* DHCPv6 */
+#endif /* DHCPv6 || DHCPv4o6 */
 			}
 			if (supports_multiple_interfaces(tmp)) {
 				log_error ("** Ignoring requests on %s.  %s",
 					   tmp -> name, "If this is not what");
 				log_error ("   you want, please write %s",
-#ifdef DHCPv6
+#if defined(DHCPv6) || defined(DHCPv4o6)
 				           (local_family != AF_INET) ?
 					   "a subnet6 declaration" :
 #endif
@@ -1187,7 +1193,7 @@ discover_interfaces(int state) {
 				goto next;
 			} else {
 				log_error ("You must write a %s",
-#ifdef DHCPv6
+#if defined(DHCPv6) || defined(DHCPv4o6)
 				           (local_family != AF_INET) ?
 					   "subnet6 declaration for this" :
 #endif
@@ -1236,7 +1242,7 @@ discover_interfaces(int state) {
 		if (proxy_local_family == AF_INET) {
 			if_register_receive(tmp);
 			if_register_send(tmp);
-#ifdef DHCPv6
+#if defined(DHCPv6) || defined(DHCPv4o6)
 		} else {
 			if ((state == DISCOVER_SERVER) ||
 			    (state == DISCOVER_RELAY)) {
@@ -1244,7 +1250,7 @@ discover_interfaces(int state) {
 			} else {
 				if_register_linklocal6(tmp);
 			}
-#endif /* DHCPv6 */
+#endif /* DHCPv6 || DHCPv4o6 */
 		}
 
 		interface_stash (tmp);
@@ -1278,13 +1284,13 @@ discover_interfaces(int state) {
 		if (tmp -> rfdesc == -1)
 			continue;
 		switch (proxy_local_family) {
-#ifdef DHCPv6 
+#if defined(DHCPv6) || defined(DHCPv4o6)
 		case AF_INET6:
 			status = omapi_register_io_object((omapi_object_t *)tmp,
 							  if_readsocket, 
 							  0, got_one_v6, 0, 0);
 			break;
-#endif /* DHCPv6 */
+#endif /* DHCPv6 || DHCPv4o6 */
 		case AF_INET:
 		default:
 			status = omapi_register_io_object((omapi_object_t *)tmp,
@@ -1297,7 +1303,7 @@ discover_interfaces(int state) {
 			log_fatal ("Can't register I/O handle for %s: %s",
 				   tmp -> name, isc_result_totext (status));
 
-#if defined(DHCPv6)
+#if defined(DHCPv6) || defined(DHCPv4o6)
 		/* Only register the first interface for V6, since
 		 * servers and relays all use the same socket.
 		 * XXX: This has some messy side effects if we start
@@ -1451,7 +1457,7 @@ isc_result_t got_one (h)
 	return ISC_R_SUCCESS;
 }
 
-#ifdef DHCPv6
+#if defined(DHCPv6) || defined(DHCPv4o6)
 isc_result_t
 got_one_v6(omapi_object_t *h) {
 	struct sockaddr_in6 from;
@@ -1507,7 +1513,7 @@ got_one_v6(omapi_object_t *h) {
 
 	return ISC_R_SUCCESS;
 }
-#endif /* DHCPv6 */
+#endif /* DHCPv6 || DHCPv4o6 */
 
 isc_result_t dhcp_interface_set_value  (omapi_object_t *h,
 					omapi_object_t *id,
@@ -1800,11 +1806,11 @@ isc_result_t dhcp_interface_remove (omapi_object_t *lp,
 	omapi_unregister_io_object ((omapi_object_t *)interface);
 
 	switch(proxy_local_family) {
-#ifdef DHCPv6
+#if defined(DHCPv6) || defined(DHCPv4o6)
 	case AF_INET6:
 		if_deregister6(interface);
 		break;
-#endif /* DHCPv6 */
+#endif /* DHCPv6 || DHCPv4o6 */
 	case AF_INET:
 	default:
 		if_deregister_send(interface);

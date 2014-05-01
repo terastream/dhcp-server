@@ -3615,8 +3615,7 @@ void dhcp_reply (lease)
 		memset(&to6, 0, sizeof(to6));
 		to6.sin6_family = AF_INET6;
 		to6.sin6_port = state->packet->client_port;
-		// memcpy(&to6.sin6_addr, state->packet->client_addr.iabuf, state->packet->client_addr.len);
-		inet_pton(AF_INET6, "2000::24c9:bdff:fef9:af6c", &to6.sin6_addr);
+		memcpy(&to6.sin6_addr, state->packet->client_addr.iabuf, state->packet->client_addr.len);
 
 		result = send_dhcpv4_over_dhcpv6(state->ip, (unsigned char *)&raw, packet_length, &to6);
 	}
