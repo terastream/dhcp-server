@@ -731,7 +731,23 @@ int find_host_for_network (struct subnet **sp, struct host_decl **host,
 			ip_address.len = 4;
 			memcpy (ip_address.iabuf,
 				fixed_addr.data + i, 4);
-			if (find_grouped_subnet (sp, share, ip_address, MDL)) {
+			if (find_grouped_subnet (sp, share, ip_address, MDL)
+#ifdef DHCPv4o6
+		/*
+		 * In case we are in DHCPv4-over-DHCPv6 mode we won't have a
+		 * match between subnet declaration (which is IPv6) and host
+		 * declaration (that has IPv4 address). Maybe one solution
+		 * would be to have IPv6 address inside host that matches
+		 * subnet, but I opted for the following heuristic:
+		 *
+		 * 	Only a single IPv4 address is available
+		 * 	DHCPv4-over-DHCPv6 mode is turned on.
+		 * 	(UID matches, but that is checked before we were
+		 * 	called).
+		 */
+				|| (fixed_addr.len == 4 && proxy_local_family != local_family)
+#endif /* defined(DHCPv4o6) */
+				) {
 				struct host_decl *tmp = (struct host_decl *)0;
 				*addr = ip_address;
 				/* This is probably not necessary, but
@@ -887,7 +903,24 @@ int find_subnet (struct subnet **sp,
 	struct subnet *rv;
 
 	for (rv = subnets; rv; rv = rv -> next_subnet) {
-		if (addr_eq (subnet_number (addr, rv -> netmask), rv -> net)) {
+		if (addr_eq (subnet_number (addr, rv -> netmask), rv -> net)
+#ifdef DHCPv4o6
+		/*
+		 * In case we are in DHCPv4-over-DHCPv6 mode we won't have a
+		 * match between subnet declaration (which is IPv6) and host
+		 * declaration (that has IPv4 address). Maybe one solution
+		 * would be to have IPv6 address inside host that matches
+		 * subnet, but I opted for the following heuristic:
+		 *
+		 * 	A single subnet declaration
+		 * 	DHCPv4-over-DHCPv6 mode is turned on.
+		 * 	(UID matches, but that is checked before we were
+		 * 	called).
+		 */
+			|| (subnets -> next_subnet == NULL
+				&& proxy_local_family != local_family)
+#endif /* defined(DHCPv4o6) */
+				) {
 			if (subnet_reference (sp, rv,
 					      file, line) != ISC_R_SUCCESS)
 				return 0;
@@ -904,7 +937,24 @@ int find_grouped_subnet (struct subnet **sp,
 	struct subnet *rv;
 
 	for (rv = share -> subnets; rv; rv = rv -> next_sibling) {
-		if (addr_eq (subnet_number (addr, rv -> netmask), rv -> net)) {
+		if (addr_eq (subnet_number (addr, rv -> netmask), rv -> net)
+#ifdef DHCPv4o6
+		/*
+		 * In case we are in DHCPv4-over-DHCPv6 mode we won't have a
+		 * match between subnet declaration (which is IPv6) and host
+		 * declaration (that has IPv4 address). Maybe one solution
+		 * would be to have IPv6 address inside host that matches
+		 * subnet, but I opted for the following heuristic:
+		 *
+		 * 	A single subnet declaration
+		 * 	DHCPv4-over-DHCPv6 mode is turned on.
+		 * 	(UID matches, but that is checked before we were
+		 * 	called).
+		 */
+			|| (share -> subnets -> next_sibling == NULL
+				&& proxy_local_family != local_family)
+#endif /* defined(DHCPv4o6) */
+				) {
 			if (subnet_reference (sp, rv,
 					      file, line) != ISC_R_SUCCESS)
 				return 0;
